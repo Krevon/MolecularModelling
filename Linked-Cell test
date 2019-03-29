@@ -1,1 +1,31 @@
+universeBox = []
+particlesnumber = 100
+sideLenght = 200
+cutOff = 3.5
+digitsAfterComma = 1
+dimensions = 3
+
+# Defines the size of boxes and their number through a monodimensional side
+def boxCreator()
+    fakeSL = sidelenght * 10 ** digitsAfterComma
+    fakeCO = cutOff * 10 ** digitsAfterComma
+    fakeBS = fakeSL / cutOff
+    
+    if fakeBS != int(fakeBS)
+        fakeBS = int(fakeBS) + 1
+    boxNumber = fakeSL / fakeBS
+    while boxNumber != int(boxNumber):
+        fakeBS += 1
+        boxNumber = fakeSL / fakeBS
+    boxSize = fakeBS / 10 ** digitsAfterComma
+    return boxSize, boxNumber
+
+boxSize, boxNumber = boxCreator()
+
+for boxX in range(boxNumber):
+    universeBox.append([])
+    for boxY in range(boxNumber):
+        universeBox[boxX].append([])
+        for boxZ in range(boxNumber):
+            universeBox[boxX][boxY].append([])
 
