@@ -73,7 +73,7 @@ def stepProcedure():
         for p1 in range(len(universeBox[box])):
             p1coor = universePart[universeBox[box][p1]]
             for p2 in range(p1, len(universeBox[box])):
-                p2coor = universePart[universeBox[box][p2]]
+                p2coor = universePart[universeBox[box][p2]] # universeBox[box][p2] is the index of the particle's coord in universePart
                 if distance(p1coor, p2coor) < cutOff
                     #LENNARD-JONES
             for pBox in range(len(boxPairs[box])):
