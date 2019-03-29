@@ -40,18 +40,32 @@ def universeGen(uniType):
 def relativeBoxCoord():
     relBoxCoor = []
     for x in range(dimensions):
-        relBoxCoor.append([])
         for y in range(dimensions):
-            relBoxCoor[x].append([])
-            for y in range(dimensions):
-                relBoxCoor[x][y].append([x - 1, y - 1, z - 1])
-                
-boxPairGen(boxX, boxY, boxZ, boxPairs):
+            for z in range(dimensions):
+                relBoxCoor.append([x - 1, y - 1, z - 1])
+
+def boxXYZtoUniLoc(x, y, z):
+    uniCoor = x * 3 ** 2 + y * 3 + z
+    return uniCoor
+    
+def boxUniLocToXYZ(uniLoc):
+    if uniLoc > 3 ** 2:
+        x = int(uniLoc / 3 ** 2)
+        uniLoc -= x * 3 ** 2
+        if uniLoc > 3:
+            y = int(uniLoc / 3)
+            z -= y * 3
+    return x, y, z
+            
+
+def boxPairGen(box, boxPairs):
     for boxP in range(13)
-        realBoxCoord = boxX * 3 ** 2 + boxY * 3 + boxZ
-        for dim in range(3):
-            realBoxCoord += relBoxCoor[boxP][dim] * 3 ** dim
-        boxPairs[boxX][boxY][boxZ].append(realBoxCoord)
+        boxX, boxY, boxZ = boxUniLocToXYZ(box)
+        boxX += relBoxCoor[boxP][0]
+        boxY += relBoxCoor[boxP][1]
+        boxZ += relBoxCoor[boxP][2]
+        closeBoxLoc = boxXYZtoUniLoc(boxX, boxY, boxZ)
+        boxPair[box].append(closeBoxLoc)
         
 def stepProcedure():
     # Look in each box and for each particle check the interactions with others in that box
@@ -62,7 +76,11 @@ def stepProcedure():
                 p2coor = universePart[universeBox[box][p2]]
                 if distance(p1coor, p2coor) < cutOff
                     #LENNARD-JONES
-            for pBox in range(len(boxPairs[
+            for pBox in range(len(boxPairs[box])):
+                for p2 in range(len(universeBox[pBox])):
+                    p2coor = universePart[universeBox[pBox][p2]]
+                    if distance(p1coor, p2coor) < cutOff
+                        #LENNARD-JONES
 
 # universeBox is a simple list of boxes containing numbers related to particles, the numbers are related to the particle position
 # in universePart 
