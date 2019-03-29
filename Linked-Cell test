@@ -1,9 +1,16 @@
 universeBox = []
+universePart = []
 particlesnumber = 100
 sideLenght = 200
 cutOff = 3.5
 digitsAfterComma = 1
 dimensions = 3
+boxPairs = []
+
+def Main():
+    boxSize, boxNumber = boxCreator()
+    universeGen(universeBox)
+    universeGen(boxPairs)
 
 # Defines the size of boxes and their number through a monodimensional side
 def boxCreator()
@@ -20,12 +27,44 @@ def boxCreator()
     boxSize = fakeBS / 10 ** digitsAfterComma
     return boxSize, boxNumber
 
-boxSize, boxNumber = boxCreator()
+def universeGen(uniType):
+    # Universe = [[], [], [], ......] one for each box
+    for boxX in range(boxNumber):
+        for boxY in range(boxNumber):
+            for boxZ in range(boxNumber):
+                universeBox.append([])
+    return uniType
 
-for boxX in range(boxNumber):
-    universeBox.append([])
-    for boxY in range(boxNumber):
-        universeBox[boxX].append([])
-        for boxZ in range(boxNumber):
-            universeBox[boxX][boxY].append([])
+#GENERATE PARTICLES AND ASSIGN THEM TO BOXES
 
+def relativeBoxCoord():
+    relBoxCoor = []
+    for x in range(dimensions):
+        relBoxCoor.append([])
+        for y in range(dimensions):
+            relBoxCoor[x].append([])
+            for y in range(dimensions):
+                relBoxCoor[x][y].append([x - 1, y - 1, z - 1])
+                
+boxPairGen(boxX, boxY, boxZ, boxPairs):
+    for boxP in range(13)
+        realBoxCoord = boxX * 3 ** 2 + boxY * 3 + boxZ
+        for dim in range(3):
+            realBoxCoord += relBoxCoor[boxP][dim] * 3 ** dim
+        boxPairs[boxX][boxY][boxZ].append(realBoxCoord)
+        
+def stepProcedure():
+    # Look in each box and for each particle check the interactions with others in that box
+    for box in range(len(universeBox)):
+        for p1 in range(len(universeBox[box])):
+            p1coor = universePart[universeBox[box][p1]]
+            for p2 in range(p1, len(universeBox[box])):
+                p2coor = universePart[universeBox[box][p2]]
+                if distance(p1coor, p2coor) < cutOff
+                    #LENNARD-JONES
+            for pBox in range(len(boxPairs[
+
+# universeBox is a simple list of boxes containing numbers related to particles, the numbers are related to the particle position
+# in universePart 
+                
+        
