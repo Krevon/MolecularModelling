@@ -7,7 +7,6 @@ maxStartingSpeed = 10
 epsilon = 1.7
 sigma = 3
 cutOff = 2.5 * sigma
-
 timeStep = 0.0001
 steps = 1000000
 dimension = 3
@@ -15,7 +14,7 @@ digitsAfterComma = 1
 
 # Variables
 universe = []  # List of particles x, y, z coordinates
-speedList = []  # List of particle's speed correlated to universe
+speedList = []
 forceList = []
 relBoxCoor = []
 
@@ -75,11 +74,44 @@ def main():
     ##particleDispositionTEST()
     ##specialParticleDisposition(sigma + 5)
 
-    #file.write("%s \n\n" % (particlesNumber + 4))  # First line of xyz file
-    #vertexGenerator()
+    particleBoxDisposition(boxNumber)
 
+    file.write("%s \n\n" % (particlesNumber + 4))  # First line of xyz file
+    vertexGenerator()
+    # STEP PROCEDURE: Start
+    for step in range(steps):
+        print("Step", step)
+        file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
+        vertexGenerator()
 
-    #stepProcedure(universe, speedList, forceList)
+        # STEP PROCEDURE 1: Look in each box and for each particle check the interactions with others in that box
+        for box in range(len(universeBox)):
+            for p1 in range(len(universeBox[box])):
+                p1Index = universeBox[box][p1]
+                p1coor = universePart[p1Index]
+                for p2 in range(p1, len(universeBox[box])):
+                    p2Index = universeBox[box][p2]
+                    p2coor = universePart[p2Index]
+                    distance, deltaX, xInv, yInv = shortestDistance(p1coor, p2coor)
+                    if distance < cutOff:
+                        lennardJones(distance, p1Index, p2Index, deltaX, xInv, yInv)
+
+                for pBox in range(len(boxPairs[box])):
+                    for p2 in range(len(universeBox[pBox])):
+                        p2Index = universeBox[box][p2]
+                        p2coor = universePart[p2Index]
+                        distance, deltaX, xInv, yInv = shortestDistance(p1coor, p2coor)
+                        if distance < cutOff:
+                            lennardJones(distance, p1Index, p2Index, deltaX, xInv, yInv)
+        # STEP PROCEDURE 2: Speed & new location calculation
+        for part in range(len(universe)):
+            for dim in range(dimension):
+                speedList[part][dim] += forceList[part][dim] * timeStep / 2
+            forceList[part] = [0, 0, 0]
+
+            pacmanEffectCOORD(part, universe[part])
+            if step % 10 == 0:
+                file.write("O       {}      {}      {}\n".format(universe[part][0], universe[part][1], universe[part][2]))
 
 def vertexGenerator():
     # Draws the 8 vertices of the cube
@@ -139,6 +171,14 @@ def particleDisposition():
             speedList.append(particleSpeed)
             forceList.append(particleForce)
             file.write("O       {}      {}      {}\n".format(universe[particle][0], universe[particle][1], universe[particle][2]))
+
+def particleBoxDisposition(boxNumber):
+    for part in range(particlesNumber):
+        boxX = int((universe[part][0] + sqSideLength / 2) / boxNumber)
+        boxY = int((universe[part][1] + sqSideLength / 2) / boxNumber)
+        boxZ = int((universe[part][2] + sqSideLength / 2) / boxNumber)
+        partBoxLoc = boxXYZtoUniLoc(boxX, boxY, boxZ, boxNumber)
+        universeBox[partBoxLoc].append(part)
 
 def specialParticleDisposition(minDist): # Particles are always far enough
     global particlesNumber
@@ -278,24 +318,18 @@ def angleGen(p1, p2, distance, deltaX):
         angle = 2 * math.pi - math.acos(deltaX / distance)
     return angle
 
-def stepProcedure2():
-    # Look in each box and for each particle check the interactions with others in that box
-    for box in range(len(universeBox)):
-        for p1 in range(len(universeBox[box])):
-            p1Index = universeBox[box][p1]
-            p1coor = universePart[p1Index]
-            for p2 in range(p1, len(universeBox[box])):
-                p2Index = universeBox[box][p2]
-                p2coor = universePart[p2Index]
-                if shortestDistance(p1coor, p2coor) < cutOff:
-                    #LENNARD-JONES
-            for pBox in range(len(boxPairs[box])):
-                for p2 in range(len(universeBox[pBox])):
-                    p2coor = universePart[universeBox[pBox][p2]]
-                    #if distance(p1coor, p2coor) < cutOff
-                        #LENNARD-JONES
+def lennardJones(distance, p1, p2, deltaX, xInv, yInv):
+    Ftot = - 24 * epsilon * (sigma ** 6) / (distance ** 7) + 48 * epsilon * (sigma ** 12) / (distance ** 13)
+    angle = angleGen(p1, p2, distance, deltaX)
 
-def stepProcedure(universe, speedList, forceList):
+    Fx = Ftot * math.cos(angle) * xInv
+    Fy = Ftot * math.sin(angle) * yInv
+    forceList[p1][0] += - Fx
+    forceList[p1][1] += - Fy
+    forceList[p2][0] += Fx
+    forceList[p2][1] += Fy
+
+def stepProcedure(universe, speedList, forceList): # OLD
     for step in range(steps):
         print("Step", step)
         totENERGY = 0
