@@ -25,8 +25,8 @@ totLJpot = 0.0
 totKener = 0.0
 totENERGY = 0.0
 
-fileEnergy = open("3D_HarmOsc_LJ_ENERGY.txt", "wt")
-file = open("3D_HarmOsc_LJ.xyz", "wt")  # Create or overwrites a file
+fileEnergy = open("Linked_Cell_LJ.txt", "wt")
+file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
 
 
 def main(universeBox):
@@ -239,8 +239,8 @@ def specialParticleDisposition(minDist): # Particles are always far enough
     print(len(speedList))
 
 def particleDispositionTEST():
-    universe.append([-9, -9, -9])
-    universe.append([-7, -9, -9])
+    universe.append([-9, 0, 0])
+    universe.append([9, 0, 0])
     speedList.append([0, 0, 0])
     speedList.append([0, 0, 0])
     forceList.append([0, 0, 0])
@@ -266,17 +266,17 @@ def shortestDistance(p1, p2): #Defines which is the shortest distance for the pa
 
     if distance > 2 * math.sqrt(3 * sqSideLength ** 2):
         if (p1[0] < 0 and p2[0] > 0) or (p1[0] > 0 and p2[0] < 0):
-            distanceX = p1[0] - p2[0] + sqSideLength
+            distanceX = sqSideLength - abs(p1[0] - p2[0])
         else:
             distanceX = p1[0] - p2[0]
 
         if (p1[1] < 0 and p2[1] > 0) or (p1[1] > 0 and p2[1] < 0):
-            distanceY = p1[1] - p2[1] + sqSideLength
+            distanceY = sqSideLength - abs(p1[1] - p2[1])
         else:
             distanceY = p1[1] - p2[1]
 
         if (p1[2] < 0 and p2[2] > 0) or (p1[2] > 0 and p2[2] < 0):
-            distanceZ = p1[2] - p2[2] + sqSideLength
+            distanceZ = sqSideLength - abs(p1[2] - p2[2])
         else:
             distanceZ = p1[2] - p2[2]
         distance = math.sqrt(distanceX ** 2 + distanceY ** 2 + distanceZ ** 2)
@@ -298,7 +298,8 @@ def pacmanEffectCOORD(p1, p1Coor):
 def TESTPrint(p1, p2, Ftot, distance):
     print(p1, p2)
     print("Total LJ Force =", Ftot)
-    print("Distance    =", distance)
+    print("Distance       =", distance)
+    print("P1:", universe[p1]," P2:" universe[p2])
     #print("Speed x & y =", speedListp1)
 
 def lennardJones(distance, p1, p2, rX, rY, rZ):
