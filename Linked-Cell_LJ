@@ -32,13 +32,8 @@ file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
 def main(universeBox):
     # Determine the size of the box and the number of them with the number of decimal equal to digitsAfterComma variable
     fakeSL = sqSideLength * 10 ** digitsAfterComma
-    fakeBS = cutOff * 10 ** digitsAfterComma
-
-    if fakeBS != int(fakeBS):
-        fakeBS = int(fakeBS) + 1
-        boxNumber = fakeSL / fakeBS
-    else:
-        boxNumber = fakeSL / fakeBS
+    fakeBS = math.ceil(cutOff * 10 ** digitsAfterComma)
+    boxNumber = fakeSL / fakeBS
     while boxNumber != int(boxNumber):
         fakeBS += 1
         boxNumber = fakeSL / fakeBS
@@ -90,21 +85,20 @@ def main(universeBox):
     particleDispositionTEST()
     ##specialParticleDisposition(sigma + 5)
 
-    particleBoxDisposition(boxNumber, universeBox)
+    particleBoxDisposition(boxSize, boxNumber, universeBox)
 
     # STEP PROCEDURE: Start
     for step in range(steps):
         print("Step", step)
-
         # STEP PROCEDURE 1: Look in each box and for each particle check the interactions with others in that box
         for box in range(len(universeBox)):
             for p1 in range(len(universeBox[box])):
                 p1Index = universeBox[box][p1]
                 p1coor = universe[p1Index]
-                for p2 in range(p1 + 1, len(universeBox[box])):
+		for p2 in range(p1 + 1, len(universeBox[box])):
                     p2Index = universeBox[box][p2]
                     p2coor = universe[p2Index]
-                    distance, rX, rY, rZ = shortestDistance(p1coor, p2coor)
+                    distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
                     if distance < cutOff:
                         lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
 
@@ -113,7 +107,8 @@ def main(universeBox):
                     for p2 in range(len(universeBox[boxInd])):
                         p2Index = universeBox[boxInd][p2]
                         p2coor = universe[p2Index]
-                        distance, rX, rY, rZ = shortestDistance(p1coor, p2coor)
+                        distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
+			print(distance)
                         if distance < cutOff:
                             lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
 
@@ -126,12 +121,13 @@ def main(universeBox):
             for dim in range(dimensions):
                 speedList[part][dim] += forceList[part][dim] * timeStep
             forceList[part] = [0, 0, 0]
-
+	    print(universe[part][0])
             pacmanEffectCOORD(part, universe[part])
+	    print(universe[part][0])
             if step % 10 == 0:
                 file.write("O       {}      {}      {}\n".format(universe[part][0], universe[part][1], universe[part][2]))
         universeBox = copy.deepcopy(emptyUniBox)
-        particleBoxDisposition(boxNumber, universeBox)
+        particleBoxDisposition(boxSize, boxNumber, universeBox)
 
 def vertexGenerator():
     # Draws the 8 vertices of the cube
@@ -248,15 +244,15 @@ def particleDispositionTEST():
     file.write("O       {}      {}      {}\n".format(universe[0][0], universe[0][1], universe[0][2]))
     file.write("O       {}      {}      {}\n".format(universe[1][0], universe[1][1], universe[1][2]))
 
-def particleBoxDisposition(boxNumber, universeBox):
+def particleBoxDisposition(boxSize, boxNumber, universeBox):
     for part in range(particlesNumber):
-        boxX = int((universe[part][0] + sqSideLength / 2) / boxNumber)
-        boxY = int((universe[part][1] + sqSideLength / 2) / boxNumber)
-        boxZ = int((universe[part][2] + sqSideLength / 2) / boxNumber)
+        boxX = int((universe[part][0] + sqSideLength / 2) / boxSize)
+        boxY = int((universe[part][1] + sqSideLength / 2) / boxSize)
+        boxZ = int((universe[part][2] + sqSideLength / 2) / boxSize)
         partBoxLoc = boxXYZtoUniLoc(boxX, boxY, boxZ, boxNumber)
         universeBox[partBoxLoc].append(part)
 
-def shortestDistance(p1, p2): #Defines which is the shortest distance for the particles
+def shortestDistance(p1, p2, boxSize): #Defines which is the shortest distance for the particles
 
     distanceX = p1[0] - p2[0]
     distanceY = p1[1] - p2[1]
@@ -264,7 +260,7 @@ def shortestDistance(p1, p2): #Defines which is the shortest distance for the pa
 
     distance = math.sqrt(distanceX ** 2 + distanceY ** 2 + distanceZ ** 2)
 
-    if distance > 2 * math.sqrt(3 * sqSideLength ** 2):
+    if distance > 2 * math.sqrt(3 * boxSize ** 2):
         if (p1[0] < 0 and p2[0] > 0) or (p1[0] > 0 and p2[0] < 0):
             distanceX = sqSideLength - abs(p1[0] - p2[0])
         else:
@@ -291,15 +287,17 @@ def pacmanEffectCOORD(p1, p1Coor):
     for dim in range(len(p1Coor)):
         p1Coor[dim] += speedList[p1][dim] * timeStep
         if p1Coor[dim] > sqSideLength / 2:
-            p1Coor[dim] -= sqSideLength
+	    mult = int(p1Coor[dim] / sqSideLength)
+	    p1Coor[dim] -= sqSideLength * mult
         elif p1Coor[dim] < - sqSideLength / 2:
-            p1Coor[dim] += sqSideLength
+            mult = int(p1Coor[dim] / sqSideLength)
+            p1Coor[dim] -= sqSideLength * mult
 
 def TESTPrint(p1, p2, Ftot, distance):
     print(p1, p2)
     print("Total LJ Force =", Ftot)
     print("Distance       =", distance)
-    print("P1:", universe[p1]," P2:" universe[p2])
+    print("P1:", universe[p1]," P2:", universe[p2])
     #print("Speed x & y =", speedListp1)
 
 def lennardJones(distance, p1, p2, rX, rY, rZ):
@@ -309,11 +307,11 @@ def lennardJones(distance, p1, p2, rX, rY, rZ):
 
     for dim in range(dimensions):
         if universe[p1][dim] < universe[p2][dim]:
-            forceList[p1][dim] += - forceXYZ[dim]
-            forceList[p2][dim] += + forceXYZ[dim]
-        else:
             forceList[p1][dim] += + forceXYZ[dim]
             forceList[p2][dim] += - forceXYZ[dim]
+        else:
+            forceList[p1][dim] += - forceXYZ[dim]
+            forceList[p2][dim] += + forceXYZ[dim]
 
 if __name__ == '__main__':
     main(universeBox)
