@@ -11,6 +11,7 @@ timeStep = 0.1
 steps = 1000
 digitsAfterComma = 0
 dimensions = 3
+boxNumber = 4
 
 # Variables
 universe = [] # Particles abs coord located in particle index number [[x, y, z],....]
@@ -30,15 +31,17 @@ file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
 
 
 def main(universeBox):
-    # Determine the size of the box and the number of them with the number of decimal equal to digitsAfterComma variable
-    fakeSL = sqSideLength * 10 ** digitsAfterComma
-    fakeBS = math.ceil(cutOff * 10 ** digitsAfterComma)
-    boxNumber = fakeSL / fakeBS
-    while boxNumber != int(boxNumber):
+    boxSize = sqSideLength / boxNumber
+    if boxSize < cutOff:
+        # Determine the size of the box and the number of them with the number of decimal equal to digitsAfterComma variable
+        fakeSL = sqSideLength * 10 ** digitsAfterComma
+        fakeBS = math.ceil(cutOff * 10 ** digitsAfterComma)
+        boxNumber = fakeSL / fakeBS
+        while boxNumber != int(boxNumber):
         fakeBS += 1
         boxNumber = fakeSL / fakeBS
-    boxSize = fakeBS / 10 ** digitsAfterComma
-    boxNumber = int(boxNumber)
+        boxSize = fakeBS / 10 ** digitsAfterComma
+        boxNumber = int(boxNumber)
 
     # Creates x, y, z coord of the 27 cubes relative to the central one
     for x in range(dimensions):
