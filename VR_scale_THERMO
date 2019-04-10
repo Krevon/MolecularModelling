@@ -10,7 +10,7 @@ maxStartingSpeed = 10
 epsilon = 1
 sigma = 1
 cutOff = 2.5 * sigma
-timeStep = 0.0001
+timeStep = 0.00001
 steps = 10000
 digitsAfterComma = 0
 dimensions = 3
@@ -18,6 +18,8 @@ boxNumber = 4
 tau = 0.000001
 boltK = 1.38064e-23
 mass = 1
+temp = 300
+ArmToMeter = 1e-10
 
 # Variables
 universe = []  # Particles abs coord located in particle index number [[x, y, z],....]
@@ -30,8 +32,9 @@ relBoxCoor = []
 timeStart = 0
 timeStop = []
 
-
-fileTemp = open("Linked_Cell_LJ_TEMP.txt", "wt")
+fileTime = open("Linked_Cell_LJ_TIME.txt", "wt")
+filepot = open("Linked_Cell_LJ_pot.png", "wt")
+fileTemp = open("Linked_Cell_LJ_TEMP.png", "wt")
 file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
 
 
@@ -39,7 +42,7 @@ def main(universeBox, boxNumber):
     # Energy & Potentials
     totLJpot = []
     totKener = []
-    totENERGY = 0.0
+    totENERGY = []
     targetTemp = 0
 
     boxSize = sqSideLength / boxNumber
@@ -110,8 +113,9 @@ def main(universeBox, boxNumber):
 
     for part in range(len(universe)):
         Tspeed = math.sqrt(speedList[part][0] ** 2 + speedList[part][1] ** 2 + speedList[part][2] ** 2)
-        totKener[0] += 0.5 * mass * Tspeed
+        totKener[0] += 0.5 * mass * (Tspeed) ** 2
     tempList.append(2 * totKener[0] / (3 * particlesNumber * boltK))
+    print(tempList[0])
     
     targeTemp = tempList[0]
         
@@ -127,6 +131,8 @@ def main(universeBox, boxNumber):
             pacmanEffectCOORD(part, universe[part])
         universeBox = copy.deepcopy(emptyUniBox)
         particleBoxDisposition(boxSize, boxNumber, universeBox)
+	
+	totLJpot.append(0)	
 
         # STEP PROCEDURE 2: Look in each box and for each particle check the interactions with others in that box
         for box in range(len(universeBox)):
@@ -138,8 +144,7 @@ def main(universeBox, boxNumber):
                     p2coor = universe[p2Index]
                     distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
                     if distance < cutOff:
-                        lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
-
+                        lennardJones(distance, p1Index, p2Index, rX, rY, rZ, totLJpot)
                 for pBox in range(len(boxPairs[box])):
                     boxInd = boxPairs[box][pBox]
                     for p2 in range(len(universeBox[boxInd])):
@@ -147,7 +152,7 @@ def main(universeBox, boxNumber):
                         p2coor = universe[p2Index]
                         distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
                         if distance < cutOff:
-                            lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
+                            lennardJones(distance, p1Index, p2Index, rX, rY, rZ, totLJpot)
                             
         # STEP PROCEDURE 3: Speed update and write file
         if step % 10 == 0:
@@ -159,32 +164,44 @@ def main(universeBox, boxNumber):
             for dim in range(dimensions):
                 speedList[part][dim] += lamb * forceList[part][dim] * timeStep / 2
             Tspeed = math.sqrt(speedList[part][0] ** 2 + speedList[part][1] ** 2 + speedList[part][2] ** 2)
-	    Kener += 0.5 * mass * Tspeed
+	    Kener += 0.5 * mass * Tspeed ** 2
             if step % 10 == 0:
                 file.write("O       {}      {}      {}\n".format(universe[part][0], universe[part][1], universe[part][2]))
 
         universeBox = copy.deepcopy(emptyUniBox)
         totKener.append(Kener)
+	totENERGY.append(Kener + totLJpot[-1])
 
         KenerNoise = totKener[-1] + vrescale_thermostat(totKener[-1], targetTemp, particlesNumber, tau)
         tempList.append(2 * KenerNoise / (3 * particlesNumber * boltK))
         
-        
         timeStop.append(time.time())
 
     # POST SIMULATION: building the time chart
-    #for step in range(len(timeStop)):
-    #    t = round(timeStop[step] - timeStart, 7)
-    #    fileTime.write("{}      {}\n".format(step + 1, t))
+    for step in range(len(timeStop)):
+        t = round(timeStop[step] - timeStart, 7)
+        fileTime.write("{}      {}\n".format(step + 1, t))  
+
     plt.plot(tempList)
     plt.draw()
     plt.savefig("Linked_Cell_LJ_TEMP.png")
     plt.show()
-    print(totKener)
+
     plt.plot(totKener)
     plt.draw()
     plt.savefig("Linked_Cell_LJ_Kener.png")
     plt.show()
+
+    plt.plot(totLJpot)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_pot.png")
+    plt.show()
+
+    plt.plot(totENERGY)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_ENERGY.png")
+    plt.show()
+
 
 def gasdev():
     s = float(np.random.normal())
@@ -210,14 +227,15 @@ def sum_noises(nn):
     return 2 * gamma_dev((nn - 1) / 2) + rr * rr
 
 def vrescale_thermostat(ekin, T0, ndeg, taut):
-    stat_kin= 3 * ndeg * boltK * T0 / 2
+    stat_kin = 3 * ndeg * boltK * T0 / 2
     rr = gasdev()
     if (taut > 0.1):
         factor = math.exp(-1.0 / taut)
     else:
         factor = 0.0
-     
-    return ekin+(1.0-factor)*sigma*(sum_noises(ndeg-1)+rr*rr)/(ndeg-ekin)+2.0*rr*math.sqrt(ekin*T0/ndeg*(1.0-factor)*factor)    
+    part1 = ekin + (1.0-factor) * sigma * (sum_noises(ndeg - 1) + rr * rr)  
+    part2 = (ndeg - ekin) + 2.0 * rr * math.sqrt(ekin * T0 / ndeg * (1.0 - factor) * factor)
+    return part1 / part2
 
 def vertexGenerator():
     # Draws the 8 vertices of the cube
@@ -328,9 +346,6 @@ def specialParticleDisposition(minDist, particlesNumber, boxSize):  # Particles 
             forceList.append(particleForce)
             file.write("O       {}      {}      {}\n".format(universe[-1][0], universe[-1][1], universe[-1][2]))
     particlesNumber = len(universe)
-    print(len(universe))
-    print(len(speedList))
-
 
 def particleDispositionTEST():
     global particlesNumber
@@ -408,11 +423,12 @@ def TESTPrint(p1, p2, Ftot, distance):
     print("P2 Speed x & y =", speedList[p2][0], " ", speedList[p2][1])
 
 
-def lennardJones(distance, p1, p2, rX, rY, rZ):
+def lennardJones(distance, p1, p2, rX, rY, rZ, totLJpot):
     if distance == 0:
         Ftot = 0
     else:
         Ftot = - 24 * epsilon * (sigma ** 6) / (distance ** 7) + 48 * epsilon * (sigma ** 12) / (distance ** 13)
+	totLJpot[-1] += 4 * epsilon * ((sigma / distance) ** 12 - (sigma / distance) ** 6)
     if Ftot >= 500:
         TESTPrint(p1, p2, Ftot, distance)
     
@@ -425,7 +441,6 @@ def lennardJones(distance, p1, p2, rX, rY, rZ):
         else:
             forceList[p1][dim] += + forceXYZ[dim]
             forceList[p2][dim] += - forceXYZ[dim]
-
 
 if __name__ == '__main__':
     main(universeBox, boxNumber)
