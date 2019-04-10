@@ -1,0 +1,362 @@
+import math, random, copy, time
+
+# Constants
+particlesNumber = 400
+sqSideLength = 20
+maxStartingSpeed = 10
+epsilon = 1
+sigma = 1
+cutOff = 2.5 * sigma
+timeStep = 0.00001
+steps = 10000
+digitsAfterComma = 0
+dimensions = 3
+boxNumber = 4
+
+# Variables
+universe = []  # Particles abs coord located in particle index number [[x, y, z],....]
+universeBox = []  # Particles index number located in different boxes [[1, 2, 4], [3],...]
+boxPairs = []  # 13 boxes index number located in the box that will process them
+speedList = []
+forceList = []
+relBoxCoor = []
+timeStart = 0
+timeStop = []
+
+# Energy & Potentials
+totLJpot = 0.0
+totKener = 0.0
+totENERGY = 0.0
+
+fileTime = open("Linked_Cell_LJ_TIME.txt", "wt")
+file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
+
+
+def main(universeBox, boxNumber):
+    boxSize = sqSideLength / boxNumber
+    if boxSize < cutOff:
+        # Determine the size of the box and the number of them with the number of decimal equal to digitsAfterComma variable
+        fakeSL = sqSideLength * 10 ** digitsAfterComma
+        fakeBS = math.ceil(cutOff * 10 ** digitsAfterComma)
+        boxNumber = fakeSL / fakeBS
+        while boxNumber != int(boxNumber):
+            fakeBS += 1
+            boxNumber = fakeSL / fakeBS
+            boxSize = fakeBS / 10 ** digitsAfterComma
+            boxNumber = int(boxNumber)
+
+    # Creates x, y, z coord of the 27 cubes relative to the central one
+    for x in range(dimensions):
+        for y in range(dimensions):
+            for z in range(dimensions):
+                relBoxCoor.append([x - 1, y - 1, z - 1])
+
+    # Generates lists like [[], [], []...[]] with one variable for each box
+    universeGen(universeBox, boxNumber)
+    emptyUniBox = copy.deepcopy(universeBox)
+    universeGen(boxPairs, boxNumber)
+
+    # Generates the 13 boxes indexes correlated to each box
+    for box in range(len(boxPairs)):
+        for boxP in range(13):
+            boxX, boxY, boxZ = boxUniLocToXYZ(box, boxNumber)
+            boxX += relBoxCoor[boxP][0]
+            boxY += relBoxCoor[boxP][1]
+            boxZ += relBoxCoor[boxP][2]
+
+            # Boundary conditions
+            if boxX % boxNumber == 0 and boxX != 0:
+                boxX -= boxNumber
+            elif boxX < 0:
+                boxX += boxNumber
+            if boxY % boxNumber == 0 and boxY != 0:
+                boxY -= boxNumber
+            elif boxY < 0:
+                boxY += boxNumber
+            if boxZ % boxNumber == 0 and boxZ != 0:
+                boxZ -= boxNumber
+            elif boxZ < 0:
+                boxZ += boxNumber
+
+            closeBoxLoc = boxXYZtoUniLoc(boxX, boxY, boxZ, boxNumber)
+            boxPairs[box].append(closeBoxLoc)
+
+    # Starts to write the file
+    file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
+    vertexGenerator()
+
+    # Generates particles and assign them to boxes
+    ##particleDisposition()
+    ##particleDispositionTEST()
+    specialParticleDisposition(sigma * 1.5, particlesNumber, boxSize)
+
+    assert len(universe) == particlesNumber
+    particleBoxDisposition(boxSize, boxNumber, universeBox)
+
+    # STEP PROCEDURE: Start
+    timeStart = time.time()
+    for step in range(steps):
+        print("Step", step)
+
+        # STEP PROCEDURE 1: Verlet step 1 & 2 speed in half timestep and position in full timestep
+        for part in range(len(universe)):
+            for dim in range(dimensions):
+                speedList[part][dim] += forceList[part][dim] * timeStep / 2
+            forceList[part] = [0, 0, 0]
+            pacmanEffectCOORD(part, universe[part])
+        universeBox = copy.deepcopy(emptyUniBox)
+        particleBoxDisposition(boxSize, boxNumber, universeBox)
+
+        # STEP PROCEDURE 2: Look in each box and for each particle check the interactions with others in that box
+        for box in range(len(universeBox)):
+            for p1 in range(len(universeBox[box])):
+                p1Index = universeBox[box][p1]
+                p1coor = universe[p1Index]
+                for p2 in range(p1 + 1, len(universeBox[box])):
+                    p2Index = universeBox[box][p2]
+                    p2coor = universe[p2Index]
+                    distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
+                    if distance < cutOff:
+                        lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
+
+                for pBox in range(len(boxPairs[box])):
+                    boxInd = boxPairs[box][pBox]
+                    for p2 in range(len(universeBox[boxInd])):
+                        p2Index = universeBox[boxInd][p2]
+                        p2coor = universe[p2Index]
+                        distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
+                        if distance < cutOff:
+                            lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
+                            
+        # STEP PROCEDURE 3: Speed update and write file
+        if step % 10 == 0:
+            file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
+            vertexGenerator()
+
+        for part in range(len(universe)):
+            for dim in range(dimensions):
+                forceList[part][dim] += math.sqrt(12 * kb * temp * gamma / timeStep) * (random.random() - 0.5) - gamma * mass * speedList[part][dim]
+                speedList[part][dim] += forceList[part][dim] * timeStep / 2
+            if step % 10 == 0:
+                file.write("O       {}      {}      {}\n".format(universe[part][0], universe[part][1], universe[part][2]))
+        universeBox = copy.deepcopy(emptyUniBox)
+        particleBoxDisposition(boxSize, boxNumber, universeBox)
+
+        timeStop.append(time.time())
+
+    # POST SIMULATION: building the time chart
+    for step in range(len(timeStop)):
+        t = round(timeStop[step] - timeStart, 7)
+        fileTime.write("{}      {}\n".format(step + 1, t))
+
+
+def vertexGenerator():
+    # Draws the 8 vertices of the cube
+    file.write("Cl       {}      {}      {}\n".format(sqSideLength / 2, sqSideLength / 2, sqSideLength / 2))
+    file.write("Cl       {}      {}      {}\n".format(sqSideLength / 2, sqSideLength / 2, - sqSideLength / 2))
+    file.write("Cl       {}      {}      {}\n".format(sqSideLength / 2, - sqSideLength / 2, sqSideLength / 2))
+    file.write("Cl       {}      {}      {}\n".format(sqSideLength / 2, - sqSideLength / 2, - sqSideLength / 2))
+    file.write("Cl       {}      {}      {}\n".format(- sqSideLength / 2, sqSideLength / 2, sqSideLength / 2))
+    file.write("Cl       {}      {}      {}\n".format(- sqSideLength / 2, sqSideLength / 2, - sqSideLength / 2))
+    file.write("Cl       {}      {}      {}\n".format(- sqSideLength / 2, - sqSideLength / 2, sqSideLength / 2))
+    file.write("Cl       {}      {}      {}\n".format(- sqSideLength / 2, - sqSideLength / 2, - sqSideLength / 2))
+
+
+def universeGen(uniType, boxNumber):
+    # Universe = [[], [], [], ......] one for each box
+    for boxX in range(boxNumber):
+        for boxY in range(boxNumber):
+            for boxZ in range(boxNumber):
+                uniType.append([])
+    return uniType
+
+
+def boxXYZtoUniLoc(x, y, z, boxNumber):
+    uniCoor = z * boxNumber ** 2 + y * boxNumber + x
+    return uniCoor
+
+
+def boxUniLocToXYZ(uniLoc, boxNumber):
+    # x, y, z of first box is 0, 0, 0, also first uniLoc should be 0 (since is an index)
+    if uniLoc >= boxNumber ** 2:
+        z = int(uniLoc / boxNumber ** 2)
+        uniLoc -= z * boxNumber ** 2
+        if uniLoc >= boxNumber:
+            y = int(uniLoc / boxNumber)
+            x = uniLoc - y * boxNumber
+        else:
+            y = 0
+            x = uniLoc
+    else:
+        z = 0
+        if uniLoc >= boxNumber:
+            y = int(uniLoc / boxNumber)
+            x = uniLoc - y * boxNumber
+        else:
+            y = 0
+            x = uniLoc
+
+    return x, y, z
+
+
+def particleDisposition():
+    for particle in range(particlesNumber):  # This will generate x and y coordinates for each and also speed vectors
+        particleCoord = []
+        particleSpeed = []
+        particleForce = []
+        for dim in range(dimensions):
+            particleCoord.append(random.uniform(- sqSideLength / 2, sqSideLength / 2))
+            particleSpeed.append(random.uniform(-maxStartingSpeed, maxStartingSpeed))
+            particleForce.append(0)
+        universe.append(particleCoord)
+        speedList.append(particleSpeed)
+        forceList.append(particleForce)
+        file.write(
+            "O       {}      {}      {}\n".format(universe[particle][0], universe[particle][1], universe[particle][2]))
+
+
+def specialParticleDisposition(minDist, particlesNumber, boxSize):  # Particles are always far enough
+
+    maxAttempt = 10
+    particleCoord = []
+    particleSpeed = []
+    particleForce = []
+    for dim in range(dimensions):
+        particleCoord.append(random.uniform(- sqSideLength / 2, sqSideLength / 2))
+        particleSpeed.append(random.uniform(-maxStartingSpeed, maxStartingSpeed))
+        particleForce.append(0)
+    universe.append(particleCoord)
+    speedList.append(particleSpeed)
+    forceList.append(particleForce)
+    file.write("O       {}      {}      {}\n".format(universe[0][0], universe[0][1], universe[0][2]))
+
+    while len(universe) < particlesNumber:  # This will generate x and y coordinates for each and also speed vectors
+        if maxAttempt == 0:
+            break
+        particleCoord = []
+        for dim in range(dimensions):
+            particleCoord.append(random.uniform(- sqSideLength / 2, sqSideLength / 2))
+        universe.append(particleCoord)
+
+        print(len(universe) - 1)
+        for part in range(0, len(universe) - 1):
+            if shortestDistance(particleCoord, universe[part], boxSize)[0] < minDist and maxAttempt != 0:
+                maxAttempt -= 1
+                del universe[-1]
+                break
+            elif shortestDistance(particleCoord, universe[part], boxSize)[0] >= minDist and maxAttempt != 0:
+                maxAttempt = 10
+            elif maxAttempt == 0:
+                del universe[-1]
+                break
+        if maxAttempt == 10:
+            particleSpeed = []
+            particleForce = []
+            for dim in range(dimensions):
+                particleSpeed.append(random.uniform(-maxStartingSpeed, maxStartingSpeed))
+                particleForce.append(0)
+            speedList.append(particleSpeed)
+            forceList.append(particleForce)
+            file.write("O       {}      {}      {}\n".format(universe[-1][0], universe[-1][1], universe[-1][2]))
+    particlesNumber = len(universe)
+    print(len(universe))
+    print(len(speedList))
+
+
+def particleDispositionTEST():
+    global particlesNumber
+    particlesNumber = 2
+    universe.append([-5, 0, 0])
+    universe.append([-6.4, 0, 0])
+    speedList.append([0, 0, 0])
+    speedList.append([0, 0, 0])
+    forceList.append([0, 0, 0])
+    forceList.append([0, 0, 0])
+    file.write("O       {}      {}      {}\n".format(universe[0][0], universe[0][1], universe[0][2]))
+    file.write("O       {}      {}      {}\n".format(universe[1][0], universe[1][1], universe[1][2]))
+
+
+def particleBoxDisposition(boxSize, boxNumber, universeBox):
+    for part in range(particlesNumber):
+        boxX = int((universe[part][0] + sqSideLength / 2) / boxSize)
+        boxY = int((universe[part][1] + sqSideLength / 2) / boxSize)
+        boxZ = int((universe[part][2] + sqSideLength / 2) / boxSize)
+        partBoxLoc = boxXYZtoUniLoc(boxX, boxY, boxZ, boxNumber)
+        universeBox[partBoxLoc].append(part)
+
+
+def shortestDistance(p1, p2, boxSize):  # Defines which is the shortest distance for the particles
+
+    distanceX = p1[0] - p2[0]
+    distanceY = p1[1] - p2[1]
+    distanceZ = p1[2] - p2[2]
+
+    distance = math.sqrt(distanceX ** 2 + distanceY ** 2 + distanceZ ** 2)
+
+    if distance > 2 * math.sqrt(3 * boxSize ** 2):
+        if (p1[0] < 0 and p2[0] > 0) or (p1[0] > 0 and p2[0] < 0):
+            distanceX = sqSideLength - abs(p1[0] - p2[0])
+        else:
+            distanceX = p1[0] - p2[0]
+
+        if (p1[1] < 0 and p2[1] > 0) or (p1[1] > 0 and p2[1] < 0):
+            distanceY = sqSideLength - abs(p1[1] - p2[1])
+        else:
+            distanceY = p1[1] - p2[1]
+
+        if (p1[2] < 0 and p2[2] > 0) or (p1[2] > 0 and p2[2] < 0):
+            distanceZ = sqSideLength - abs(p1[2] - p2[2])
+        else:
+            distanceZ = p1[2] - p2[2]
+        distance = math.sqrt(distanceX ** 2 + distanceY ** 2 + distanceZ ** 2)
+
+    if distance == 0:
+        ratioXtD = ratioYtD = ratioZtD = 0
+    else:
+        ratioXtD = abs(distanceX) / distance
+        ratioYtD = abs(distanceY) / distance
+        ratioZtD = abs(distanceZ) / distance
+
+    return distance, ratioXtD, ratioYtD, ratioZtD
+
+
+def pacmanEffectCOORD(p1, p1Coor):
+    for dim in range(len(p1Coor)):
+        p1Coor[dim] += speedList[p1][dim] * timeStep
+        if p1Coor[dim] >= sqSideLength / 2:
+            mult = int((p1Coor[dim] + (sqSideLength / 2)) / sqSideLength)
+            p1Coor[dim] -= sqSideLength * mult
+        elif p1Coor[dim] <= - sqSideLength / 2:
+            mult = int((p1Coor[dim] - (sqSideLength / 2)) / sqSideLength)
+            p1Coor[dim] -= sqSideLength * mult
+
+def TESTPrint(p1, p2, Ftot, distance):
+    print(p1, p2)
+    print("Total LJ Force =", Ftot)
+    print("Distance       =", distance)
+    print("P1:", universe[p1], " P2:", universe[p2])
+    print("P1 Speed x & y =", speedList[p1][0], " ", speedList[p1][1])
+    print("P2 Speed x & y =", speedList[p2][0], " ", speedList[p2][1])
+
+
+def lennardJones(distance, p1, p2, rX, rY, rZ):
+    if distance == 0:
+        Ftot = 0
+    else:
+        Ftot = - 24 * epsilon * (sigma ** 6) / (distance ** 7) + 48 * epsilon * (sigma ** 12) / (distance ** 13)
+    if Ftot >= 500:
+        TESTPrint(p1, p2, Ftot, distance)
+    
+    forceXYZ = [Ftot * rX, Ftot * rY, Ftot * rZ]
+
+    for dim in range(dimensions):
+        if universe[p1][dim] < universe[p2][dim]:
+            forceList[p1][dim] += - forceXYZ[dim]
+            forceList[p2][dim] += + forceXYZ[dim]
+        else:
+            forceList[p1][dim] += + forceXYZ[dim]
+            forceList[p2][dim] += - forceXYZ[dim]
+
+
+if __name__ == '__main__':
+main(universeBox, boxNumber)
