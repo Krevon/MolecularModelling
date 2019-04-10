@@ -1,4 +1,6 @@
 import math, random, copy, time
+import numpy as np
+import matplotlib.pyplot as plt
 
 # Constants
 particlesNumber = 400
@@ -8,10 +10,14 @@ epsilon = 1
 sigma = 1
 cutOff = 2.5 * sigma
 timeStep = 0.00001
-steps = 10000
+steps = 500
 digitsAfterComma = 0
 dimensions = 3
 boxNumber = 4
+boltK = 1.38064e-23
+gamma = 0.001
+mass = 1
+
 
 # Variables
 universe = []  # Particles abs coord located in particle index number [[x, y, z],....]
@@ -22,17 +28,20 @@ forceList = []
 relBoxCoor = []
 timeStart = 0
 timeStop = []
+tempList = []
 
 # Energy & Potentials
-totLJpot = 0.0
-totKener = 0.0
-totENERGY = 0.0
 
 fileTime = open("Linked_Cell_LJ_TIME.txt", "wt")
 file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
 
 
 def main(universeBox, boxNumber):
+    
+    totLJpot = []
+    totKener = []
+    totENERGY = []
+    
     boxSize = sqSideLength / boxNumber
     if boxSize < cutOff:
         # Determine the size of the box and the number of them with the number of decimal equal to digitsAfterComma variable
@@ -95,6 +104,14 @@ def main(universeBox, boxNumber):
 
     # STEP PROCEDURE: Start
     timeStart = time.time()
+    totKener.append(0)
+    
+    for part in range(len(universe)):
+        Tspeed = math.sqrt(speedList[part][0] ** 2 + speedList[part][1] ** 2 + speedList[part][2] ** 2)
+        totKener[0] += 0.5 * mass * (Tspeed) ** 2
+    tempList.append(2 * totKener[0] / (3 * particlesNumber * boltK))
+    temp = tempList[0]
+
     for step in range(steps):
         print("Step", step)
 
@@ -106,6 +123,8 @@ def main(universeBox, boxNumber):
             pacmanEffectCOORD(part, universe[part])
         universeBox = copy.deepcopy(emptyUniBox)
         particleBoxDisposition(boxSize, boxNumber, universeBox)
+	
+	totLJpot.append(0)
 
         # STEP PROCEDURE 2: Look in each box and for each particle check the interactions with others in that box
         for box in range(len(universeBox)):
@@ -132,15 +151,23 @@ def main(universeBox, boxNumber):
         if step % 10 == 0:
             file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
             vertexGenerator()
+        Kener = 0
 
         for part in range(len(universe)):
             for dim in range(dimensions):
-                forceList[part][dim] += math.sqrt(12 * kb * temp * gamma / timeStep) * (random.random() - 0.5) - gamma * mass * speedList[part][dim]
+                forceList[part][dim] += math.sqrt(12 * boltK * temp * gamma / timeStep) * (random.random() - 0.5) - gamma * mass * speedList[part][dim]
                 speedList[part][dim] += forceList[part][dim] * timeStep / 2
+		Tspeed = math.sqrt(speedList[part][0] ** 2 + speedList[part][1] ** 2 + speedList[part][2] ** 2)
+	    	Kener += 0.5 * mass * Tspeed ** 2
             if step % 10 == 0:
                 file.write("O       {}      {}      {}\n".format(universe[part][0], universe[part][1], universe[part][2]))
         universeBox = copy.deepcopy(emptyUniBox)
         particleBoxDisposition(boxSize, boxNumber, universeBox)
+
+        totKener.append(Kener)
+	totENERGY.append(Kener + totLJpot[-1])
+	
+	tempList.append(2 * totKener[-1] / (3 * particlesNumber * boltK))
 
         timeStop.append(time.time())
 
@@ -149,6 +176,25 @@ def main(universeBox, boxNumber):
         t = round(timeStop[step] - timeStart, 7)
         fileTime.write("{}      {}\n".format(step + 1, t))
 
+    plt.plot(tempList)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_TEMP.png")
+    plt.show()
+
+    plt.plot(totKener)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_Kener.png")
+    plt.show()
+
+    plt.plot(totLJpot)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_pot.png")
+    plt.show()
+
+    plt.plot(totENERGY)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_ENERGY.png")
+    plt.show()
 
 def vertexGenerator():
     # Draws the 8 vertices of the cube
@@ -359,4 +405,4 @@ def lennardJones(distance, p1, p2, rX, rY, rZ):
 
 
 if __name__ == '__main__':
-main(universeBox, boxNumber)
+    main(universeBox, boxNumber)
