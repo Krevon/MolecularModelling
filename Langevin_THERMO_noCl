@@ -91,8 +91,8 @@ def main(universeBox, boxNumber):
             boxPairs[box].append(closeBoxLoc)
 
     # Starts to write the file
-    file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
-    vertexGenerator()
+    file.write("%s \n\n" % (particlesNumber))  # First line of xyz file
+    #vertexGenerator()
 
     # Generates particles and assign them to boxes
     ##particleDisposition()
@@ -149,8 +149,8 @@ def main(universeBox, boxNumber):
                             
         # STEP PROCEDURE 3: Speed update and write file
         if step % 10 == 0:
-            file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
-            vertexGenerator()
+            file.write("%s \n\n" % (particlesNumber))  # First line of xyz file
+            #vertexGenerator()
         Kener = 0
 
         for part in range(len(universe)):
