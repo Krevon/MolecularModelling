@@ -7,7 +7,7 @@ maxStartingSpeed = 10
 epsilon = 1
 sigma = 1
 cutOff = 2.5 * sigma
-timeStep = 0.00001
+timeStep = 0.0001
 steps = 10000
 digitsAfterComma = 0
 dimensions = 3
@@ -33,6 +33,11 @@ file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
 
 
 def main(universeBox, boxNumber):
+
+    totLJpot = []
+    totKener = []
+    totENERGY = []
+    
     boxSize = sqSideLength / boxNumber
     if boxSize < cutOff:
         # Determine the size of the box and the number of them with the number of decimal equal to digitsAfterComma variable
@@ -106,7 +111,9 @@ def main(universeBox, boxNumber):
             pacmanEffectCOORD(part, universe[part])
         universeBox = copy.deepcopy(emptyUniBox)
         particleBoxDisposition(boxSize, boxNumber, universeBox)
-
+        
+        totLJpot.append(0)
+        
         # STEP PROCEDURE 2: Look in each box and for each particle check the interactions with others in that box
         for box in range(len(universeBox)):
             for p1 in range(len(universeBox[box])):
@@ -117,7 +124,7 @@ def main(universeBox, boxNumber):
                     p2coor = universe[p2Index]
                     distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
                     if distance < cutOff:
-                        lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
+                        lennardJones(distance, p1Index, p2Index, rX, rY, rZ, totLJpot)
 
                 for pBox in range(len(boxPairs[box])):
                     boxInd = boxPairs[box][pBox]
@@ -126,20 +133,25 @@ def main(universeBox, boxNumber):
                         p2coor = universe[p2Index]
                         distance, rX, rY, rZ = shortestDistance(p1coor, p2coor, boxSize)
                         if distance < cutOff:
-                            lennardJones(distance, p1Index, p2Index, rX, rY, rZ)
+                            lennardJones(distance, p1Index, p2Index, rX, rY, rZ, totLJpot)
 
         # STEP PROCEDURE 3: Speed update and write file
         if step % 10 == 0:
             file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
             vertexGenerator()
-
+        Kener = 0
+        
         for part in range(len(universe)):
             for dim in range(dimensions):
                 speedList[part][dim] += forceList[part][dim] * timeStep / 2
             if step % 10 == 0:
                 file.write("O       {}      {}      {}\n".format(universe[part][0], universe[part][1], universe[part][2]))
+            Kener += 0.5 * mass * Tspeed ** 2
         universeBox = copy.deepcopy(emptyUniBox)
         particleBoxDisposition(boxSize, boxNumber, universeBox)
+    
+        totKener.append(Kener)
+    	totENERGY.append(Kener + totLJpot[-1])
 
         timeStop.append(time.time())
 
@@ -147,6 +159,21 @@ def main(universeBox, boxNumber):
     for step in range(len(timeStop)):
         t = round(timeStop[step] - timeStart, 7)
         fileTime.write("{}      {}\n".format(step + 1, t))
+    
+    plt.plot(totKener)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_Kener.png")
+    plt.show()
+
+    plt.plot(totLJpot)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_pot.png")
+    plt.show()
+
+    plt.plot(totENERGY)
+    plt.draw()
+    plt.savefig("Linked_Cell_LJ_ENERGY.png")
+    plt.show()
 
 
 def vertexGenerator():
@@ -338,11 +365,12 @@ def TESTPrint(p1, p2, Ftot, distance):
     print("P2 Speed x & y =", speedList[p2][0], " ", speedList[p2][1])
 
 
-def lennardJones(distance, p1, p2, rX, rY, rZ):
+def lennardJones(distance, p1, p2, rX, rY, rZ, totLJpot):
     if distance == 0:
         Ftot = 0
     else:
         Ftot = - 24 * epsilon * (sigma ** 6) / (distance ** 7) + 48 * epsilon * (sigma ** 12) / (distance ** 13)
+        totLJpot[-1] += 4 * epsilon * ((sigma / distance) ** 12 - (sigma / distance) ** 6)
     if Ftot >= 500:
         TESTPrint(p1, p2, Ftot, distance)
     forceXYZ = [Ftot * rX, Ftot * rY, Ftot * rZ]
