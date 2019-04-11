@@ -389,6 +389,5 @@ def lennardJones(distance, p1, p2, rX, rY, rZ, totLJpot):
             forceList[p1][dim] += + forceXYZ[dim]
             forceList[p2][dim] += - forceXYZ[dim]
 
-
 if __name__ == '__main__':
     main(universeBox, boxNumber)
