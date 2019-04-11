@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gamma
 
+### AUTHORS: David Sebastian Casadio, Pijna, Vili
+
 # Constants
 particlesNumber = 100
 sqSideLength = 20
@@ -10,14 +12,14 @@ maxStartingSpeed = 10
 epsilon = 1
 sigma = 1
 cutOff = 2.5 * sigma
-timeStep = 0.00001
-steps = 10000
+timeStep = 0.0001
+steps = 10
 digitsAfterComma = 0
 dimensions = 3
 boxNumber = 4
 tau = 0.000001
 boltK = 1.38064e-23
-mass = 1
+mass = 1.6605779e-24
 temp = 300
 ArmToMeter = 1e-10
 
@@ -32,10 +34,10 @@ relBoxCoor = []
 timeStart = 0
 timeStop = []
 
-fileTime = open("Linked_Cell_LJ_TIME.txt", "wt")
-filepot = open("Linked_Cell_LJ_pot.png", "wt")
-fileTemp = open("Linked_Cell_LJ_TEMP.png", "wt")
-file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
+fileTime = open("Linked_Cell_VRTHERMO_TIME.txt", "wt")
+filepot = open("Linked_Cell_VRTHERMO_pot.png", "wt")
+fileTemp = open("Linked_Cell_VRTHERMO_TEMP.png", "wt")
+file = open("Linked_Cell_VRTHERMO.xyz", "wt")  # Create or overwrites a file
 
 
 def main(universeBox, boxNumber):
@@ -94,8 +96,8 @@ def main(universeBox, boxNumber):
             boxPairs[box].append(closeBoxLoc)
 
     # Starts to write the file
-    file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
-    vertexGenerator()
+    file.write("%s \n\n" % (particlesNumber))  # First line of xyz file
+    #vertexGenerator()
 
     # Generates particles and assign them to boxes
     ##particleDisposition()
@@ -156,8 +158,8 @@ def main(universeBox, boxNumber):
                             
         # STEP PROCEDURE 3: Speed update and write file
         if step % 10 == 0:
-            file.write("%s \n\n" % (particlesNumber + 8))  # First line of xyz file
-            vertexGenerator()
+            file.write("%s \n\n" % (particlesNumber))  # First line of xyz file
+            #vertexGenerator()
         Kener = 0
         
         for part in range(len(universe)):
