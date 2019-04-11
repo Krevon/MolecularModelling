@@ -1,11 +1,12 @@
 import math, random, copy, time
+import matplotlib.pyplot as plt
 
 ### AUTHOR: David Sebastian Casadio
 
 # Constants
-particlesNumber = 400
+particlesNumber = 15
 sqSideLength = 20
-maxStartingSpeed = 10
+maxStartingSpeed = 1
 epsilon = 1
 sigma = 1
 cutOff = 2.5 * sigma
@@ -25,11 +26,6 @@ forceList = []
 relBoxCoor = []
 timeStart = 0
 timeStop = []
-
-# Energy & Potentials
-totLJpot = 0.0
-totKener = 0.0
-totENERGY = 0.0
 
 fileTimeName = "Linked_Cell_LJ_TIME_{}_.txt".format(particlesNumber)
 
@@ -166,17 +162,10 @@ def main(universeBox, boxNumber):
         t = round(timeStop[step] - timeStart, 7)
         fileTime.write("{}      {}\n".format(step + 1, t))
     
-    plt.plot(totKener)
-    plt.draw()
-    plt.savefig("Linked_Cell_LJ_Kener.png")
-    plt.show()
-
-    plt.plot(totLJpot)
-    plt.draw()
-    plt.savefig("Linked_Cell_LJ_pot.png")
-    plt.show()
-
-    plt.plot(totENERGY)
+    plt.plot(totENERGY, label = "Total Energy")    
+    plt.plot(totKener, label = " Kinetic Energy")
+    plt.plot(totLJpot, label = " Potential Energy")
+    plt.legend()
     plt.draw()
     plt.savefig("Linked_Cell_LJ_ENERGY.png")
     plt.show()
@@ -388,6 +377,7 @@ def lennardJones(distance, p1, p2, rX, rY, rZ, totLJpot):
         else:
             forceList[p1][dim] += + forceXYZ[dim]
             forceList[p2][dim] += - forceXYZ[dim]
+
 
 if __name__ == '__main__':
     main(universeBox, boxNumber)
