@@ -1,5 +1,7 @@
 import math, random, copy, time
 
+### AUTHOR: David Sebastian Casadio
+
 # Constants
 particlesNumber = 400
 sqSideLength = 20
@@ -12,6 +14,7 @@ steps = 10000
 digitsAfterComma = 0
 dimensions = 3
 boxNumber = 4
+mass = 1
 
 # Variables
 universe = []  # Particles abs coord located in particle index number [[x, y, z],....]
@@ -28,7 +31,9 @@ totLJpot = 0.0
 totKener = 0.0
 totENERGY = 0.0
 
-fileTime = open("Linked_Cell_LJ_TIME.txt", "wt")
+fileTimeName = "Linked_Cell_LJ_TIME_{}_.txt".format(particlesNumber)
+
+fileTime = open(fileTimeName, "wt")
 file = open("Linked_Cell_LJ.xyz", "wt")  # Create or overwrites a file
 
 
@@ -146,7 +151,8 @@ def main(universeBox, boxNumber):
                 speedList[part][dim] += forceList[part][dim] * timeStep / 2
             if step % 10 == 0:
                 file.write("O       {}      {}      {}\n".format(universe[part][0], universe[part][1], universe[part][2]))
-            Kener += 0.5 * mass * Tspeed ** 2
+            Tspeed = math.sqrt(speedList[part][0] ** 2 + speedList[part][1] ** 2 + speedList[part][2] ** 2)
+	    Kener += 0.5 * mass * Tspeed ** 2
         universeBox = copy.deepcopy(emptyUniBox)
         particleBoxDisposition(boxSize, boxNumber, universeBox)
     
@@ -371,7 +377,7 @@ def lennardJones(distance, p1, p2, rX, rY, rZ, totLJpot):
     else:
         Ftot = - 24 * epsilon * (sigma ** 6) / (distance ** 7) + 48 * epsilon * (sigma ** 12) / (distance ** 13)
         totLJpot[-1] += 4 * epsilon * ((sigma / distance) ** 12 - (sigma / distance) ** 6)
-    if Ftot >= 500:
+    if Ftot >= 1000:
         TESTPrint(p1, p2, Ftot, distance)
     forceXYZ = [Ftot * rX, Ftot * rY, Ftot * rZ]
 
